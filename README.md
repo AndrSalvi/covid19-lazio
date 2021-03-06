@@ -7,7 +7,7 @@ Questa Dashboard è sviluppata sulla base del template di Rami Krispin ([Coronav
 
 **Codice**
 
-Il codice è disponibile su GitHub al seguente link [GitHub](https://github.com/){target="_blank"}.
+Il codice è disponibile su GitHub al seguente link [GitHub](https://github.com/AndrSalvi/covid19dashboard-lazio).
 
 
 **Dati**
