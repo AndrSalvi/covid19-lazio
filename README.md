@@ -16,7 +16,3 @@ I dati mostrati sono estratti da quelli messi a disposizione dalla Protezione Ci
 La dashboard utilizza inoltre i dati forniti dal progetto Covid-19 Opendata Vaccini del Commissario straordinario per l'emergenza Covid-19 - Presidenza del Consiglio dei Ministri. 
 
 
-**Update**
-
-I dati sono aggiornati al `r format(max(covid_data_lazio$Date), "%d %B, %Y")`.
-La dashboard è stata manualmente aggiornata il `r format(Sys.time(), "%d %B, %Y")`.
