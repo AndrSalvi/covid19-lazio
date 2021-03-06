@@ -13,6 +13,7 @@ Il codice è disponibile su GitHub al seguente link [GitHub](https://github.com/
 **Dati**
 
 I dati mostrati sono estratti da quelli messi a disposizione dalla Protezione Civile Italiana ([Dati Covid-19 Italia](https://github.com/pcm-dpc/COVID-19)) a livello regionale e provinciale. 
+La dashboard utilizza inoltre i dati forniti dal progetto Covid-19 Opendata Vaccini del Commissario straordinario per l'emergenza Covid-19 - Presidenza del Consiglio dei Ministri. 
 
 
 **Update**
