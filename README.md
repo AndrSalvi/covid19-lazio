@@ -1,6 +1,8 @@
 # covid19dashboard-lazio
 Dashboard per la visualizzazione di dati relativi al COVID-19 nella Regione Lazio. Dati estratti dalla repository della Protezione Civile. 
 
+Link: https://andrsalvi.github.io/covid19dashboard-lazio/covid_lazio.html
+
 **Dashboard**
 
 Questa Dashboard è sviluppata sulla base del template di Rami Krispin ([Coronavirus dashboard:](https://www.antoinesoetewey.com/files/coronavirus-dashboard.html)) e adattato al caso della Regione Lazio. L'intera Dashboard è sviluppata in R utilizzando il framework R Markdown. 
