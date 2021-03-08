@@ -7,7 +7,7 @@ Accedi alla dashboard: [LINK](https://andrsalvi.github.io/covid19dashboard-lazio
 
 **Dashboard**
 
-Questa Dashboard è sviluppata sulla base del template di Rami Krispin ([Coronavirus dashboard:](https://www.antoinesoetewey.com/files/coronavirus-dashboard.html)) e adattato al caso della Regione Lazio. L'intera Dashboard è sviluppata in R utilizzando il framework R Markdown. 
+Questa Dashboard è sviluppata sulla base del template di Rami Krispin ([Coronavirus dashboard](https://www.antoinesoetewey.com/files/coronavirus-dashboard.html)) e adattato al caso della Regione Lazio. L'intera Dashboard è sviluppata in R utilizzando il framework R Markdown. 
 
 **Codice**
 
