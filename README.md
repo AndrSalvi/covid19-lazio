@@ -1,7 +1,9 @@
 # covid19dashboard-lazio
 Dashboard per la visualizzazione di dati relativi al COVID-19 nella Regione Lazio. Dati estratti dalla repository della Protezione Civile. 
 
-Link: https://andrsalvi.github.io/covid19dashboard-lazio/covid_lazio.html
+Accedi alla dashboard: [LINK](https://andrsalvi.github.io/covid19dashboard-lazio/covid_lazio.html)
+
+![Preview](https://github.com/AndrSalvi/covid19dashboard-lazio/blob/main/dashboard.png?raw=true)
 
 **Dashboard**
 
