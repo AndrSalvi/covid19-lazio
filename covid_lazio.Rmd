@@ -1,0 +1,654 @@
+---
+title: "Covid-19 - Lazio"
+author: ""
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    #social: ["facebook", "twitter", "linkedin"]
+    #source_code: embed
+    vertical_layout: fill
+---
+
+```{r}
+#Run before knitting!
+library(pacman)
+pacman::p_load(ggplot2, dplyr, readr, lubridate, devtools, magritter, flexdashboard, leaflet, leafpop, purrr)
+
+urlfile="https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-province/dpc-covid19-ita-province.csv"
+covid_data_prov <-read_csv(url(urlfile))
+
+urlfile2="https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv"
+covid_data_reg <-read_csv(url(urlfile2))
+
+urlfile3="https://raw.githubusercontent.com/italia/covid19-opendata-vaccini/master/dati/somministrazioni-vaccini-latest.csv"
+vaccine_data <-read_csv(url(urlfile3))
+
+
+
+## fix date 
+
+covid_data_prov$Date <- as.Date(ymd_hms(covid_data_prov$data))
+covid_data_lazio_prov <- covid_data_prov %>% filter(codice_regione == 12)
+
+covid_data_reg$Date <- as.Date(ymd_hms(covid_data_reg$data))
+covid_data_lazio <- covid_data_reg %>% filter(codice_regione == 12)
+
+vaccine_data$Date <- as.Date(ymd(vaccine_data$data_somministrazione))
+vaccine_data_lazio <- vaccine_data %>% filter(nome_area == "Lazio")
+
+vaccine_data_lazio_agg <- vaccine_data_lazio %>%
+  group_by(Date) %>%
+  summarize(valueM = sum(sesso_maschile),valueF = sum(sesso_femminile)) %>% mutate(vaccini_totali = valueM + valueF) %>% select(-valueM, -valueF)
+
+
+covid_data_lazio <- left_join(covid_data_lazio, vaccine_data_lazio_agg)
+vaccine_data_lazio <- vaccine_data_lazio %>% mutate(vaccini_totali = sesso_maschile + sesso_femminile)
+
+```
+
+
+
+```{r setup, include=FALSE}
+
+`%>%` <- magrittr::`%>%`
+#------------------ Parametri Generali ------------------
+# Colori
+# https://www.w3.org/TR/css-color-3/#svg-color
+confirmed_color <- "purple"
+active_color <- "#1f77b4"
+death_color <- "red"
+terapie_int_color <- "orange"
+nuovipositivi_color <- "lightsalmon"
+ospedalizzati_color <- "blue"
+vaccine_color <- "forestgreen"
+
+
+totalprint <- covid_data_lazio %>%  filter(Date == max(Date)) %>% select(totale_casi)
+totalprint <- max(totalprint)
+totaldeathprint <- covid_data_lazio %>%  filter(Date == max(Date)) %>% select(deceduti)
+totaldeathprint <-  max(totaldeathprint)
+binvaccini <- vaccine_data_lazio$prima_dose + vaccine_data_lazio$seconda_dose
+totalvaccineprint <- sum(binvaccini)
+
+```
+
+Andamento
+=======================================================================
+
+Row {data-width=400}
+-----------------------------------------------------------------------
+
+### confirmed {.value-box}
+
+```{r}
+valueBox(
+  value = paste(format(totalprint, big.mark = ","), "", sep = " "),
+  caption = "Totale Casi",
+  icon = "fas fa-user-md",
+  color = confirmed_color
+)
+```
+
+### death {.value-box}
+
+```{r}
+
+valueBox(
+  value = paste(format(totaldeathprint, big.mark = ","), " (",
+    round(100 * totaldeathprint/ totalprint, 1),
+    "%)",
+    sep = ""
+  ),
+  caption = "Totale deceduti (Percentuale di mortalità)",
+  icon = "fas fa-heart-broken",
+  color = death_color
+)
+```
+
+### vaccine {.value-box}
+
+```{r}
+valueBox(
+  value = paste(format(totalvaccineprint, big.mark = ","), "", sep = " "),
+  caption = "Totale Dosi Vaccinali",
+  icon = "fas fa-prescription-bottle-alt",
+  color = vaccine_color
+)
+```
+
+
+
+Row
+-----------------------------------------------------------------------
+
+### **Andamento giornaliero per tipologia**
+    
+```{r}
+plotly::plot_ly(data = covid_data_lazio) %>%
+  plotly::add_trace(
+    x = ~Date,
+    y = ~totale_positivi,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Positivi",
+    line = list(color = active_color),
+    marker = list(color = active_color)
+  ) %>%
+  plotly::add_trace(
+    x = ~Date,
+    y = ~terapia_intensiva,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Terapia Intensiva",
+    line = list(color = terapie_int_color),
+    marker = list(color = terapie_int_color)
+  ) %>%
+    plotly::add_trace(
+    x = ~Date,
+    y = ~nuovi_positivi,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Nuovi Positivi",
+    line = list(color = nuovipositivi_color),
+    marker = list(color = nuovipositivi_color)
+  ) %>%
+    plotly::add_trace(
+    x = ~Date,
+    y = ~totale_ospedalizzati,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Ospedalizzati",
+    line = list(color = ospedalizzati_color),
+    marker = list(color = ospedalizzati_color)
+  ) %>%
+    plotly::add_trace(
+    x = ~Date,
+    y = ~vaccini_totali,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Dosi Vaccinali",
+    line = list(color = vaccine_color),
+    marker = list(color = vaccine_color)
+  ) %>%
+  plotly::add_annotations(
+    x = as.Date("2020-03-10"),
+    y = 3,
+    text = paste("Lockdown"),
+    xref = "x",
+    yref = "y",
+    arrowhead = 5,
+    arrowhead = 3,
+    arrowsize = 1,
+    showarrow = TRUE,
+    ax = -30,
+    ay = -90
+  ) %>%
+  plotly::add_annotations(
+    x = as.Date("2020-05-18"),
+    y = 14,
+    text = paste(
+      "Fine Lockdown"
+    ),
+    xref = "x",
+    yref = "y",
+    arrowhead = 5,
+    arrowhead = 3,
+    arrowsize = 1,
+    showarrow = TRUE,
+    ax = -10,
+    ay = -90
+  ) %>%
+  plotly::add_annotations(
+    x = as.Date("2020-12-19"),
+    y = 14,
+    text = paste(
+      "Decreto Natale"
+    ),
+    xref = "x",
+    yref = "y",
+    arrowhead = 5,
+    arrowhead = 3,
+    arrowsize = 1,
+    showarrow = TRUE,
+    ax = -10,
+    ay = -90
+  ) %>%
+  plotly::add_annotations(
+    x = as.Date("2020-11-06"),
+    y = 14,
+    text = paste(
+      "Coprifuoco"
+    ),
+    xref = "x",
+    yref = "y",
+    arrowhead = 5,
+    arrowhead = 3,
+    arrowsize = 1,
+    showarrow = TRUE,
+    ax = -10,
+    ay = -90
+  ) %>%
+  plotly::layout(
+    title = "",
+    yaxis = list(title = "Numeri"),
+    xaxis = list(title = "Data"),
+    legend = list(x = 0.1, y = 0.9),
+    hovermode = "compare"
+  )
+```
+
+Dati Cumulati
+=======================================================================
+
+
+Column {data-width=400}
+-------------------------------------
+
+
+### **Dati Cumulati**
+    
+```{r}
+
+#----------------------------------------
+
+covid_data_lazio %>%
+  plotly::plot_ly() %>%
+  plotly::add_trace(
+    x = ~Date,
+    y = ~totale_casi,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Casi"
+  ) %>%
+  plotly::add_trace(
+    x = ~Date,
+    y = ~deceduti,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Deceduti"
+  ) %>%
+  plotly::layout(
+    title = "",
+    legend = list(x = 0.7, y = 0.9),
+    yaxis = list(title = "Numeri Cumulati"),
+    xaxis = list(title = "Data"),
+    hovermode = "compare",
+    margin = list(
+      b = 10,
+      t = 10,
+      pad = 2
+    )
+  )
+```
+ 
+### **Dati Cumulati per provincia**
+
+```{r}
+
+province_last <- covid_data_lazio_prov %>% filter(Date == max(Date)) %>% select(totale_casi, denominazione_provincia) %>% filter(denominazione_provincia != "In fase di definizione/aggiornamento")
+
+plotly::plot_ly(
+  data = province_last,
+  x = ~denominazione_provincia,
+  y = ~ totale_casi,
+  type = "bar",
+  name = "Confirmed",
+  marker = list(color = active_color)
+  ) %>%
+  plotly::layout(
+    barmode = "stack",
+    yaxis = list(title = "Casi Totali"),
+    xaxis = list(title = ""),
+    hovermode = "compare",
+    margin = list(
+      b = 10,
+      t = 10,
+      pad = 2
+    )
+  )
+```
+
+
+
+Comparazione
+=======================================================================
+
+
+Column {data-width=400}
+-------------------------------------
+
+
+### **Comparazione Regioni Vicine - Positivi**
+    
+```{r}
+
+comparazione_regioni <- covid_data_reg %>%
+  dplyr::filter(denominazione_regione == "Lazio"| denominazione_regione == "Toscana"|denominazione_regione == "Umbria"|denominazione_regione == "Marche"| denominazione_regione == "Abruzzo"|denominazione_regione == "Molise"|denominazione_regione == "Campania") %>% select(denominazione_regione, Date, totale_positivi)
+  
+comparazione_regioni2 <- tidyr::pivot_wider(comparazione_regioni, names_from = denominazione_regione, values_from = totale_positivi)
+
+#----------------------------------------
+
+comparazione_regioni2 %>%
+  plotly::plot_ly() %>%
+  plotly::add_trace(
+    x = ~Date,
+    y = ~Lazio,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Lazio"
+  ) %>%
+  plotly::add_trace(
+    x = ~Date,
+    y = ~Umbria,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Umbria"
+  ) %>%
+    plotly::add_trace(
+    x = ~Date,
+    y = ~Toscana,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Toscana"
+  ) %>%
+    plotly::add_trace(
+    x = ~Date,
+    y = ~Marche,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Marche"
+  ) %>%
+    plotly::add_trace(
+    x = ~Date,
+    y = ~Abruzzo,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Abruzzo"
+  ) %>%
+    plotly::add_trace(
+    x = ~Date,
+    y = ~Molise,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Molise"
+  ) %>%
+    plotly::add_trace(
+    x = ~Date,
+    y = ~Campania,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Campania"
+  ) %>%
+  plotly::layout(
+    title = "",
+    legend = list(x = 0.7, y = 0.9),
+    yaxis = list(title = "Positivi"),
+    xaxis = list(title = "Data"),
+    hovermode = "compare",
+    margin = list(
+      b = 10,
+      t = 10,
+      pad = 2
+    )
+  )
+
+```
+ 
+### **Dati Cumulati per Regione - Casi Totali**
+
+```{r}
+
+regionivicine_last <- covid_data_reg %>% filter(Date == max(Date)) %>% select(totale_casi, denominazione_regione) %>% filter(denominazione_regione == "Lazio"| denominazione_regione == "Toscana"|denominazione_regione == "Umbria"|denominazione_regione == "Marche"| denominazione_regione == "Abruzzo"|denominazione_regione == "Molise"|denominazione_regione == "Campania") 
+
+plotly::plot_ly(
+  data = regionivicine_last,
+  x = ~denominazione_regione,
+  y = ~ totale_casi,
+  type = "bar",
+  name = "Confirmed",
+  marker = list(color = active_color)
+  ) %>%
+  plotly::layout(
+    barmode = "stack",
+    yaxis = list(title = "Casi Totali"),
+    xaxis = list(title = ""),
+    hovermode = "compare",
+    margin = list(
+      b = 10,
+      t = 10,
+      pad = 2
+    )
+  )
+```
+
+
+Dettagli
+=======================================================================
+
+
+Column {data-width=400}
+-------------------------------------
+
+
+### **Dettagli Serie Storiche - Lazio**
+    
+```{r}
+
+
+covid_data_lazio %>%
+  plotly::plot_ly() %>%
+  plotly::add_trace(
+    x = ~Date,
+    y = ~ricoverati_con_sintomi,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Ricoverati con Sintomi"
+  ) %>%
+  plotly::add_trace(
+    x = ~Date,
+    y = ~terapia_intensiva,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Terapia Intensiva"
+  ) %>%
+    plotly::add_trace(
+    x = ~Date,
+    y = ~isolamento_domiciliare,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Isolamento Domiciliare"
+  ) %>%
+  plotly::layout(
+    title = "",
+    legend = list(x = 0.7, y = 0.9),
+    yaxis = list(title = "Numeri"),
+    xaxis = list(title = "Data"),
+    hovermode = "compare",
+    margin = list(
+      b = 10,
+      t = 10,
+      pad = 2
+    )
+  )
+
+```
+ 
+### **Tamponi Cumulati**
+
+```{r}
+
+covid_data_lazio %>%
+  plotly::plot_ly() %>%
+  plotly::add_trace(
+    x = ~Date,
+    y = ~tamponi,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Tamponi"
+  ) %>%
+  plotly::layout(
+    title = "",
+    legend = list(x = 0.7, y = 0.9),
+    yaxis = list(title = "Numero Tamponi"),
+    xaxis = list(title = "Data"),
+    hovermode = "compare",
+    margin = list(
+      b = 10,
+      t = 10,
+      pad = 2
+    )
+  )
+
+```
+
+
+
+Mappa
+=======================================================================
+
+### **Mappa dei casi totali per provincia** (*usa + e - per lo zoom*)
+
+La versione attuale mostra unicamente i casi totali per provincia (localizzati sulla mappa alle coordinate del capoluogo). Seguiranno aggiornamenti.
+
+```{r}
+
+
+leaflet(covid_data_lazio_prov) %>%
+  addProviderTiles(providers$Stamen.Toner) %>%
+  addLabelOnlyMarkers(
+    lng = ~long,
+    lat = ~lat,
+    label = ~totale_casi,
+    labelOptions = labelOptions(noHide = TRUE)
+)
+
+
+```
+
+
+Vaccini
+=======================================================================
+
+
+### **Dettagli Vaccinali**
+    
+```{r}
+
+
+vaccine_data_lazio$vaccini_totali1 <- vaccine_data_lazio$vaccini_totali
+vaccine_data_lazio$vaccini_totali2 <- vaccine_data_lazio$vaccini_totali
+vaccine_tidy <- tidyr::pivot_wider(vaccine_data_lazio, names_from = fornitore, values_from = vaccini_totali1) 
+vaccine_tidy <-tidyr::pivot_wider(vaccine_tidy, names_from = fascia_anagrafica, values_from = vaccini_totali2)
+
+vaccine_tidy <- vaccine_tidy %>% 
+  group_by(Date) %>% summarise_if(is.numeric, sum, na.rm = TRUE)
+
+
+vaccine_tidy %>%
+  plotly::plot_ly() %>%
+  plotly::add_trace(
+    x = ~Date,
+    y = ~prima_dose,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Prima dose"
+  ) %>%
+  plotly::add_trace(
+    x = ~Date,
+    y = ~seconda_dose,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Seconda Dose"
+  ) %>%
+  plotly::add_trace(
+    x = ~Date,
+    y = ~vaccini_totali,
+    type = "scatter",
+    mode = "lines+markers",
+    name = "Dosi Totali"
+  ) %>%
+  plotly::layout(
+    title = "",
+    legend = list(x = 0.7, y = 0.9),
+    yaxis = list(title = "Dosi"),
+    xaxis = list(title = "Data"),
+    hovermode = "compare",
+    margin = list(
+      b = 10,
+      t = 10,
+      pad = 2
+    )
+  )
+
+```
+ 
+
+### **Dosi Vaccinali Cumulate per fascia anagrafica**
+```{r}
+
+vaccine_last <- vaccine_data_lazio %>% group_by(fascia_anagrafica) 
+
+vaccine_data_lazio$vaccini_totali1 <- vaccine_data_lazio$vaccini_totali
+vaccine_data_lazio$vaccini_totali2 <- vaccine_data_lazio$vaccini_totali
+
+vaccine_tidy_age <-tidyr::pivot_wider(vaccine_data_lazio, names_from = fornitore, values_from = vaccini_totali1)
+
+vaccine_tidy_age <- vaccine_tidy_age %>% 
+  group_by(fascia_anagrafica) %>% summarise_if(is.numeric, sum, na.rm = TRUE) 
+
+vaccine_tidy_age$Pfizer <- vaccine_tidy_age$`Pfizer/BioNTech` 
+
+plotly::plot_ly(
+  data = vaccine_tidy_age,
+  x = ~fascia_anagrafica,
+  y = ~Pfizer,
+  type = "bar",
+  name = "Pfizer/BioNTech"
+) %>%
+  plotly::add_trace(
+    y = ~AstraZeneca,
+    name = "AstraZeneca"
+  ) %>%
+  plotly::add_trace(
+    y = ~Moderna,
+    name = "Moderna"
+  ) %>%
+  plotly::layout(
+    barmode = "stack",
+    yaxis = list(title = "Dosi Totali"),
+    xaxis = list(title = ""),
+    hovermode = "compare",
+    margin = list(
+      b = 10,
+      t = 10,
+      pad = 2
+    )
+  )
+
+
+```
+
+
+About
+=======================================================================
+
+**Dashboard**
+
+Questa Dashboard è sviluppata sulla base del template di Rami Krispin ([Coronavirus dashboard:](https://www.antoinesoetewey.com/files/coronavirus-dashboard.html)) e adattato al caso della Regione Lazio. L'intera Dashboard è sviluppata in R utilizzando il framework R Markdown. 
+
+**Codice**
+
+Il codice è disponibile su GitHub al seguente link [GitHub](https://github.com/AndrSalvi/covid19dashboard-lazio){target="_blank"}.
+
+
+**Dati**
+
+I dati mostrati sono estratti da quelli messi a disposizione dalla Protezione Civile Italiana ([Dati Covid-19 Italia](https://github.com/pcm-dpc/COVID-19)) a livello regionale e provinciale. 
+La dashboard utilizza inoltre i dati forniti dal progetto Covid-19 Opendata Vaccini del Commissario straordinario per l'emergenza Covid-19 - Presidenza del Consiglio dei Ministri. 
+
+
+**Update**
+
+I dati sono aggiornati al `r format(max(covid_data_lazio$Date), "%d %B, %Y")`.
+La dashboard è stata manualmente aggiornata il `r format(Sys.time(), "%d %B, %Y")`.
